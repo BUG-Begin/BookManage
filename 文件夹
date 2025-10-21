@@ -1,0 +1,423 @@
+第三步：本地创建MVC文件夹结构
+3.1 克隆仓库到本地
+bash
+# 复制仓库URL（在GitHub仓库页面点击绿色"Code"按钮）
+git clone https://github.com/你的用户名/book-management-system.git
+cd book-management-system
+3.2 创建完整的MVC文件夹结构
+使用以下命令创建文件夹结构：
+
+Windows (PowerShell):
+
+powershell
+# 创建主目录结构
+mkdir -Force app,public,vendor,storage,tests
+mkdir -Force app/controllers,app/models,app/views,app/config,app/core,app/middleware
+mkdir -Force app/views/layouts,app/views/books,app/views/authors,app/views/categories,app/views/borrow,app/views/dashboard
+mkdir -Force public/css,public/js,public/images,public/uploads/book_covers
+mkdir -Force storage/logs,storage/cache
+mkdir -Force tests/Unit,tests/Feature
+
+# 创建所有必要的文件
+@"
+# 图书管理系统
+
+基于MVC架构的图书管理系统，包含完整的图书管理、借阅管理功能。
+
+## 功能特性
+- 📚 图书信息管理
+- 👥 作者管理
+- 📂 分类管理
+- 🔐 用户认证
+- 📖 图书借阅/归还
+- 📊 数据统计
+
+## 技术栈
+- PHP 7.4+
+- MySQL 5.7+
+- HTML5/CSS3/JavaScript
+- Bootstrap 5
+
+## 安装说明
+1. 克隆项目
+2. 配置数据库
+3. 导入SQL文件
+4. 访问网站
+"@ | Out-File -FilePath README.md -Encoding UTF8
+Mac/Linux (Terminal):
+
+bash
+#!/bin/bash
+
+# 创建主目录结构
+mkdir -p app/{controllers,models,views,config,core,middleware}
+mkdir -p app/views/{layouts,books,authors,categories,borrow,dashboard}
+mkdir -p public/{css,js,images,uploads/book_covers}
+mkdir -p storage/{logs,cache}
+mkdir -p tests/{Unit,Feature}
+
+# 创建README.md
+cat > README.md << 'EOF'
+# 图书管理系统
+
+基于MVC架构的图书管理系统，包含完整的图书管理、借阅管理功能。
+
+## 功能特性
+- 📚 图书信息管理
+- 👥 作者管理
+- 📂 分类管理
+- 🔐 用户认证
+- 📖 图书借阅/归还
+- 📊 数据统计
+
+## 技术栈
+- PHP 7.4+
+- MySQL 5.7+
+- HTML5/CSS3/JavaScript
+- Bootstrap 5
+
+## 安装说明
+1. 克隆项目
+2. 配置数据库
+3. 导入SQL文件
+4. 访问网站
+EOF
+第四步：创建核心文件
+4.1 创建入口文件
+bash
+# 创建public/index.php
+cat > public/index.php << 'EOF'
+<?php
+/**
+ * 图书管理系统 - 入口文件
+ */
+
+// 显示错误信息（开发环境）
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// 定义常量
+define('ROOT_PATH', dirname(__DIR__));
+define('APP_PATH', ROOT_PATH . '/app');
+define('PUBLIC_PATH', __DIR__);
+
+// 自动加载类
+spl_autoload_register(function ($className) {
+    $file = APP_PATH . '/' . str_replace('\\', '/', $className) . '.php';
+    if (file_exists($file)) {
+        require_once $file;
+    }
+});
+
+// 引入配置文件
+require_once APP_PATH . '/config/config.php';
+
+// 简单的路由处理
+$request = $_SERVER['REQUEST_URI'];
+$path = parse_url($request, PHP_URL_PATH);
+
+// 移除基础路径
+$basePath = '/book-management-system';
+if (strpos($path, $basePath) === 0) {
+    $path = substr($path, strlen($basePath));
+}
+
+// 路由匹配
+switch ($path) {
+    case '/':
+    case '':
+        require APP_PATH . '/controllers/BookController.php';
+        $controller = new BookController();
+        $controller->index();
+        break;
+    case '/books':
+        require APP_PATH . '/controllers/BookController.php';
+        $controller = new BookController();
+        $controller->index();
+        break;
+    case '/books/create':
+        require APP_PATH . '/controllers/BookController.php';
+        $controller = new BookController();
+        $controller->create();
+        break;
+    default:
+        http_response_code(404);
+        echo "页面未找到 - 404";
+        break;
+}
+EOF
+4.2 创建配置文件
+bash
+# 创建app/config/config.php
+cat > app/config/config.php << 'EOF'
+<?php
+/**
+ * 应用配置文件
+ */
+
+return [
+    'app' => [
+        'name' => '图书管理系统',
+        'version' => '1.0.0',
+        'debug' => true
+    ],
+    'database' => [
+        'host' => 'localhost',
+        'dbname' => 'book_management',
+        'username' => 'root',
+        'password' => '',
+        'charset' => 'utf8mb4'
+    ],
+    'paths' => [
+        'uploads' => dirname(__DIR__) . '/../public/uploads/',
+        'views' => dirname(__DIR__) . '/views/'
+    ]
+];
+EOF
+4.3 创建基础控制器
+bash
+# 创建app/controllers/BaseController.php
+cat > app/controllers/BaseController.php << 'EOF'
+<?php
+/**
+ * 基础控制器类
+ */
+class BaseController {
+    
+    /**
+     * 渲染视图
+     */
+    protected function render($view, $data = []) {
+        // 提取数据到变量中
+        extract($data);
+        
+        // 包含头部
+        $headerFile = APP_PATH . '/views/layouts/header.php';
+        if (file_exists($headerFile)) {
+            require_once $headerFile;
+        }
+        
+        // 包含主体视图
+        $viewFile = APP_PATH . "/views/{$view}.php";
+        if (file_exists($viewFile)) {
+            require_once $viewFile;
+        } else {
+            throw new Exception("视图文件不存在: {$viewFile}");
+        }
+        
+        // 包含底部
+        $footerFile = APP_PATH . '/views/layouts/footer.php';
+        if (file_exists($footerFile)) {
+            require_once $footerFile;
+        }
+    }
+    
+    /**
+     * 重定向
+     */
+    protected function redirect($url) {
+        header("Location: {$url}");
+        exit();
+    }
+    
+    /**
+     * 获取POST数据
+     */
+    protected function getPost($key, $default = null) {
+        return isset($_POST[$key]) ? trim($_POST[$key]) : $default;
+    }
+    
+    /**
+     * 返回JSON响应
+     */
+    protected function json($data) {
+        header('Content-Type: application/json');
+        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+    
+    /**
+     * 验证必填字段
+     */
+    protected function validateRequired($fields, $data) {
+        $errors = [];
+        foreach ($fields as $field) {
+            if (empty($data[$field])) {
+                $errors[] = "字段 '{$field}' 是必填的";
+            }
+        }
+        return $errors;
+    }
+}
+EOF
+4.4 创建图书控制器
+bash
+# 创建app/controllers/BookController.php
+cat > app/controllers/BookController.php << 'EOF'
+<?php
+/**
+ * 图书控制器
+ */
+require_once 'BaseController.php';
+require_once APP_PATH . '/models/Book.php';
+require_once APP_PATH . '/models/Database.php';
+
+class BookController extends BaseController {
+    private $bookModel;
+    
+    public function __construct() {
+        $this->bookModel = new Book();
+    }
+    
+    /**
+     * 显示图书列表
+     */
+    public function index() {
+        try {
+            $books = $this->bookModel->getAllBooks();
+            
+            $this->render('books/index', [
+                'title' => '图书列表',
+                'books' => $books,
+                'totalCount' => count($books)
+            ]);
+        } catch (Exception $e) {
+            $this->render('error', [
+                'title' => '错误',
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * 显示添加图书表单
+     */
+    public function create() {
+        $this->render('books/create', [
+            'title' => '添加图书',
+            'action' => 'create'
+        ]);
+    }
+    
+    /**
+     * 处理添加图书表单提交
+     */
+    public function store() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('/books');
+            return;
+        }
+        
+        try {
+            $bookData = [
+                'title' => $this->getPost('title'),
+                'author' => $this->getPost('author'),
+                'isbn' => $this->getPost('isbn'),
+                'publisher' => $this->getPost('publisher'),
+                'publish_year' => $this->getPost('publish_year'),
+                'category' => $this->getPost('category'),
+                'price' => $this->getPost('price'),
+                'description' => $this->getPost('description')
+            ];
+            
+            // 验证必填字段
+            $requiredFields = ['title', 'author', 'isbn'];
+            $errors = $this->validateRequired($requiredFields, $bookData);
+            
+            if (!empty($errors)) {
+                $this->render('books/create', [
+                    'title' => '添加图书',
+                    'errors' => $errors,
+                    'book' => $bookData
+                ]);
+                return;
+            }
+            
+            // 保存图书
+            if ($this->bookModel->createBook($bookData)) {
+                $this->redirect('/books?success=1');
+            } else {
+                throw new Exception('添加图书失败');
+            }
+            
+        } catch (Exception $e) {
+            $this->render('books/create', [
+                'title' => '添加图书',
+                'errors' => [$e->getMessage()],
+                'book' => $bookData
+            ]);
+        }
+    }
+}
+EOF
+4.5 创建数据库模型
+bash
+# 创建app/models/Database.php
+cat > app/models/Database.php << 'EOF'
+<?php
+/**
+ * 数据库连接类
+ */
+class Database {
+    private $connection;
+    private static $instance = null;
+    
+    private function __construct() {
+        $config = require APP_PATH . '/config/config.php';
+        $dbConfig = $config['database'];
+        
+        try {
+            $dsn = "mysql:host={$dbConfig['host']};dbname={$dbConfig['dbname']};charset={$dbConfig['charset']}";
+            $this->connection = new PDO($dsn, $dbConfig['username'], $dbConfig['password']);
+            $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->connection->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            die("数据库连接失败: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * 获取单例实例
+     */
+    public static function getInstance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+    
+    /**
+     * 获取数据库连接
+     */
+    public function getConnection() {
+        return $this->connection;
+    }
+    
+    /**
+     * 执行查询
+     */
+    public function query($sql, $params = []) {
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute($params);
+        return $stmt;
+    }
+    
+    /**
+     * 获取所有记录
+     */
+    public function fetchAll($sql, $params = []) {
+        $stmt = $this->query($sql, $params);
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * 获取单条记录
+     */
+    public function fetchOne($sql, $params = []) {
+        $stmt = $this->query($sql, $params);
+        return $stmt->fetch();
+    }
+}
+EOF
+4.6 创建图书模型
+bash
