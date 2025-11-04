@@ -17,6 +17,80 @@
             color: #333;
         }
 
+        /* 登录模态框样式 */
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .login-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            width: 400px;
+            max-width: 90%;
+        }
+
+        .login-content h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .login-form .form-group {
+            margin-bottom: 15px;
+        }
+
+        .login-form label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .login-form input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        .login-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .login-tip {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .hidden {
+            display: none;
+        }
+
         .container {
             display: flex;
             min-height: 100vh;
@@ -270,14 +344,32 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-        .hidden {
-            display: none;
-        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- 登录模态框 -->
+    <div id="loginModal" class="login-modal">
+        <div class="login-content">
+            <h2>图书管理系统登录</h2>
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <input type="text" id="username" class="form-control" placeholder="请输入用户名" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" class="form-control" placeholder="请输入密码" required>
+                </div>
+                <button type="submit" class="login-btn">登录</button>
+            </form>
+            <div class="login-tip">
+                <p>提示: 使用用户名 <strong>admin</strong> 和密码 <strong>admin123</strong> 登录</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主系统界面 -->
+    <div class="container hidden" id="mainContainer">
         <!-- 侧边导航栏 -->
         <div class="sidebar">
             <div class="sidebar-header">
@@ -300,7 +392,7 @@
             <div class="header">
                 <h1>系统概览</h1>
                 <div class="user-info">
-                    <span>欢迎，管理员</span>
+                    <span id="userWelcome">欢迎，管理员</span>
                     <button class="btn btn-danger" id="logoutBtn">退出登录</button>
                 </div>
             </div>
@@ -644,9 +736,80 @@
     </div>
 
     <script>
+        // 登录状态管理
+        let isLoggedIn = false;
+        let currentUser = null;
+
+        // 检查登录状态
+        function checkLoginStatus() {
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                isLoggedIn = true;
+                showMainInterface();
+            } else {
+                showLoginModal();
+            }
+        }
+
+        // 显示登录模态框
+        function showLoginModal() {
+            document.getElementById('loginModal').classList.remove('hidden');
+            document.getElementById('mainContainer').classList.add('hidden');
+        }
+
+        // 显示主界面
+        function showMainInterface() {
+            document.getElementById('loginModal').classList.add('hidden');
+            document.getElementById('mainContainer').classList.remove('hidden');
+            document.getElementById('userWelcome').textContent = `欢迎，${currentUser.name || currentUser.username}`;
+            
+            // 加载默认页面数据
+            loadDashboardData();
+        }
+
+        // 登录功能
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // 简单的登录验证（实际应用中应该与后端API交互）
+            if (username === 'admin' && password === 'admin123') {
+                currentUser = {
+                    id: 1,
+                    username: 'admin',
+                    name: '系统管理员',
+                    role: '超级管理员'
+                };
+                
+                // 保存用户信息到本地存储
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                isLoggedIn = true;
+                showMainInterface();
+            } else {
+                alert('用户名或密码错误！请使用用户名: admin, 密码: admin123');
+            }
+        });
+
+        // 退出登录
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            if(confirm('确定要退出登录吗？')) {
+                localStorage.removeItem('currentUser');
+                currentUser = null;
+                isLoggedIn = false;
+                document.getElementById('loginForm').reset();
+                showLoginModal();
+            }
+        });
+
         // 页面导航功能
         document.querySelectorAll('.sidebar-menu li').forEach(item => {
             item.addEventListener('click', function() {
+                if (!isLoggedIn) return;
+                
                 // 移除所有active类
                 document.querySelectorAll('.sidebar-menu li').forEach(li => {
                     li.classList.remove('active');
@@ -1029,15 +1192,6 @@
             alert('设置已保存！');
         });
 
-        // 退出登录
-        document.getElementById('logoutBtn').addEventListener('click', function() {
-            if(confirm('确定要退出登录吗？')) {
-                // 清除登录状态，跳转到登录页
-                alert('已退出登录');
-                // window.location.href = 'login.html';
-            }
-        });
-
         // 搜索功能
         document.getElementById('reader-search-btn').addEventListener('click', function() {
             const searchTerm = document.getElementById('reader-search').value;
@@ -1087,7 +1241,7 @@
 
         // 初始化页面
         document.addEventListener('DOMContentLoaded', function() {
-            loadDashboardData();
+            checkLoginStatus();
         });
     </script>
 </body>
