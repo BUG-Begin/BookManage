@@ -1,0 +1,608 @@
+https://691c24e53aeeed735c8fb208.mockapi.io/api/v1/books  （API网址）
+
+创建专门的MockAPI服务文件：
+// src/services/mockApiService.js
+import axios from 'axios';
+
+class MockApiService {
+  constructor() {
+    this.baseURL = 'https://691c24e53aeeed735c8fb208.mockapi.io/api/v1';
+    this.client = axios.create({
+      baseURL: this.baseURL,
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    // 请求拦截器
+    this.client.interceptors.request.use(
+      (config) => {
+        console.log(`发送请求: ${config.method?.toUpperCase()} ${config.url}`);
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    // 响应拦截器
+    this.client.interceptors.response.use(
+      (response) => {
+        console.log('响应数据:', response.data);
+        return response.data;
+      },
+      (error) => {
+        console.error('API错误:', error);
+        return Promise.reject(error.response?.data || error);
+      }
+    );
+  }
+
+  // 通用请求方法
+  async request(config) {
+    try {
+      return await this.client.request(config);
+    } catch (error) {
+      console.error('请求失败:', error);
+      throw error;
+    }
+  }
+
+  get(endpoint, params = {}) {
+    return this.request({ method: 'GET', url: endpoint, params });
+  }
+
+  post(endpoint, data = {}) {
+    return this.request({ method: 'POST', url: endpoint, data });
+  }
+
+  put(endpoint, data = {}) {
+    return this.request({ method: 'PUT', url: endpoint, data });
+  }
+
+  delete(endpoint) {
+    return this.request({ method: 'DELETE', url: endpoint });
+  }
+}
+
+export default new MockApiService();
+
+
+
+创建图书服务
+
+// src/services/bookService.js
+import mockApi from './mockApiService';
+
+export const bookService = {
+  // 获取所有图书
+  getAllBooks: () => {
+    return mockApi.get('/books');
+  },
+
+  // 获取单个图书
+  getBookById: (id) => {
+    return mockApi.get(`/books/${id}`);
+  },
+
+  // 创建新图书
+  createBook: (bookData) => {
+    return mockApi.post('/books', bookData);
+  },
+
+  // 更新图书
+  updateBook: (id, bookData) => {
+    return mockApi.put(`/books/${id}`, bookData);
+  },
+
+  // 删除图书
+  deleteBook: (id) => {
+    return mockApi.delete(`/books/${id}`);
+  },
+
+  // 搜索图书（MockAPI支持查询参数）
+  searchBooks: (searchTerm) => {
+    return mockApi.get('/books', { search: searchTerm });
+  },
+
+  // 分页获取图书
+  getBooksPaginated: (page = 1, limit = 10) => {
+    return mockApi.get('/books', { page, limit });
+  }
+};
+
+创建测试组件验证连接
+
+// src/components/ApiTester.js
+import React, { useState, useEffect } from 'react';
+import { bookService } from '../services/bookService';
+
+const ApiTester = () => {
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  // 测试获取所有图书
+  const testGetBooks = async () => {
+    setLoading(true);
+    setMessage('正在获取图书...');
+    try {
+      const data = await bookService.getAllBooks();
+      setBooks(data);
+      setMessage(`成功获取 ${data.length} 本图书`);
+    } catch (error) {
+      setMessage(`获取失败: ${error.message}`);
+      console.error('获取图书错误:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 测试创建图书
+  const testCreateBook = async () => {
+    const newBook = {
+      title: '测试图书 ' + Date.now(),
+      author: '测试作者',
+      isbn: '978' + Math.random().toString().slice(2, 11),
+      category: '技术',
+      publisher: '测试出版社',
+      publicationYear: 2024,
+      totalCopies: 5,
+      availableCopies: 5,
+      description: '这是一本测试图书'
+    };
+
+    setLoading(true);
+    setMessage('正在创建图书...');
+    try {
+      const createdBook = await bookService.createBook(newBook);
+      setMessage(`创建成功! ID: ${createdBook.id}`);
+      // 刷新列表
+      testGetBooks();
+    } catch (error) {
+      setMessage(`创建失败: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 测试删除图书
+  const testDeleteBook = async (id) => {
+    setLoading(true);
+    setMessage('正在删除图书...');
+    try {
+      await bookService.deleteBook(id);
+      setMessage('删除成功!');
+      // 刷新列表
+      testGetBooks();
+    } catch (error) {
+      setMessage(`删除失败: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    testGetBooks();
+  }, []);
+
+  return (
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <h1>MockAPI 连接测试</h1>
+      
+      <div style={{ marginBottom: '20px' }}>
+        <button 
+          onClick={testGetBooks} 
+          disabled={loading}
+          style={{ marginRight: '10px', padding: '10px' }}
+        >
+          获取图书
+        </button>
+        <button 
+          onClick={testCreateBook} 
+          disabled={loading}
+          style={{ marginRight: '10px', padding: '10px' }}
+        >
+          创建测试图书
+        </button>
+      </div>
+
+      {message && (
+        <div style={{
+          padding: '10px',
+          backgroundColor: message.includes('成功') ? '#d4edda' : '#f8d7da',
+          border: `1px solid ${message.includes('成功') ? '#c3e6cb' : '#f5c6cb'}`,
+          borderRadius: '4px',
+          marginBottom: '20px'
+        }}>
+          {message}
+        </div>
+      )}
+
+      {loading && <div>加载中...</div>}
+
+      <div>
+        <h2>图书列表</h2>
+        {books.length === 0 ? (
+          <p>暂无图书数据</p>
+        ) : (
+          <div style={{ display: 'grid', gap: '15px' }}>
+            {books.map(book => (
+              <div key={book.id} style={{
+                border: '1px solid #ddd',
+                padding: '15px',
+                borderRadius: '8px',
+                backgroundColor: '#f9f9f9'
+              }}>
+                <h3>{book.title || '无标题'}</h3>
+                <p><strong>作者:</strong> {book.author || '未知'}</p>
+                <p><strong>ISBN:</strong> {book.isbn || '未知'}</p>
+                <p><strong>分类:</strong> {book.category || '未分类'}</p>
+                <p><strong>库存:</strong> {book.totalCopies || 0}</p>
+                <p><strong>可借:</strong> {book.availableCopies || 0}</p>
+                <button 
+                  onClick={() => testDeleteBook(book.id)}
+                  style={{
+                    backgroundColor: '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    padding: '5px 10px',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  删除
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ApiTester;
+
+
+集成到主应用
+
+
+// src/App.js
+import React, { useState } from 'react';
+import ApiTester from './components/ApiTester';
+import BookManager from './components/BookManager';
+import './App.css';
+
+function App() {
+  const [currentView, setCurrentView] = useState('tester');
+
+  return (
+    <div className="App">
+      <nav style={{ padding: '20px', borderBottom: '1px solid #ccc' }}>
+        <button 
+          onClick={() => setCurrentView('tester')}
+          style={{ marginRight: '10px', padding: '10px 20px' }}
+        >
+          API测试
+        </button>
+        <button 
+          onClick={() => setCurrentView('manager')}
+          style={{ padding: '10px 20px' }}
+        >
+          图书管理
+        </button>
+      </nav>
+
+      <main>
+        {currentView === 'tester' && <ApiTester />}
+        {currentView === 'manager' && <BookManager />}
+      </main>
+    </div>
+  );
+}
+
+export default App;
+
+
+创建完整的图书管理组件
+
+// src/components/BookManager.js
+import React, { useState, useEffect } from 'react';
+import { bookService } from '../services/bookService';
+
+const BookManager = () => {
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [editingBook, setEditingBook] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const [formData, setFormData] = useState({
+    title: '',
+    author: '',
+    isbn: '',
+    category: '',
+    publisher: '',
+    publicationYear: new Date().getFullYear(),
+    totalCopies: 1,
+    availableCopies: 1,
+    description: ''
+  });
+
+  // 获取图书列表
+  const fetchBooks = async () => {
+    setLoading(true);
+    try {
+      const data = await bookService.getAllBooks();
+      setBooks(data);
+    } catch (error) {
+      console.error('获取图书失败:', error);
+      alert('获取图书失败: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 创建或更新图书
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (editingBook) {
+        // 更新图书
+        await bookService.updateBook(editingBook.id, formData);
+        alert('图书更新成功!');
+      } else {
+        // 创建图书
+        await bookService.createBook(formData);
+        alert('图书创建成功!');
+      }
+      
+      // 重置表单
+      setFormData({
+        title: '',
+        author: '',
+        isbn: '',
+        category: '',
+        publisher: '',
+        publicationYear: new Date().getFullYear(),
+        totalCopies: 1,
+        availableCopies: 1,
+        description: ''
+      });
+      setShowForm(false);
+      setEditingBook(null);
+      
+      // 刷新列表
+      fetchBooks();
+    } catch (error) {
+      alert('操作失败: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 编辑图书
+  const handleEdit = (book) => {
+    setEditingBook(book);
+    setFormData({
+      title: book.title || '',
+      author: book.author || '',
+      isbn: book.isbn || '',
+      category: book.category || '',
+      publisher: book.publisher || '',
+      publicationYear: book.publicationYear || new Date().getFullYear(),
+      totalCopies: book.totalCopies || 1,
+      availableCopies: book.availableCopies || 1,
+      description: book.description || ''
+    });
+    setShowForm(true);
+  };
+
+  // 删除图书
+  const handleDelete = async (id) => {
+    if (window.confirm('确定要删除这本图书吗？')) {
+      setLoading(true);
+      try {
+        await bookService.deleteBook(id);
+        alert('删除成功!');
+        fetchBooks();
+      } catch (error) {
+        alert('删除失败: ' + error.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // 搜索图书
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) {
+      fetchBooks();
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await bookService.searchBooks(searchTerm);
+      setBooks(data);
+    } catch (error) {
+      console.error('搜索失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBooks();
+  }, []);
+
+  return (
+    <div style={{ padding: '20px' }}>
+      <h1>图书管理系统</h1>
+      
+      {/* 搜索栏 */}
+      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+        <input
+          type="text"
+          placeholder="搜索图书..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ padding: '8px', flex: 1 }}
+        />
+        <button onClick={handleSearch} disabled={loading}>
+          搜索
+        </button>
+        <button onClick={() => { setSearchTerm(''); fetchBooks(); }}>
+          重置
+        </button>
+        <button 
+          onClick={() => { setShowForm(true); setEditingBook(null); }}
+          style={{ backgroundColor: '#007bff', color: 'white' }}
+        >
+          添加图书
+        </button>
+      </div>
+
+      {/* 图书表单 */}
+      {showForm && (
+        <div style={{
+          border: '1px solid #ddd',
+          padding: '20px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          backgroundColor: '#f8f9fa'
+        }}>
+          <h3>{editingBook ? '编辑图书' : '添加图书'}</h3>
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <input
+                type="text"
+                placeholder="书名"
+                value={formData.title}
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                required
+              />
+              <input
+                type="text"
+                placeholder="作者"
+                value={formData.author}
+                onChange={(e) => setFormData({...formData, author: e.target.value})}
+                required
+              />
+              <input
+                type="text"
+                placeholder="ISBN"
+                value={formData.isbn}
+                onChange={(e) => setFormData({...formData, isbn: e.target.value})}
+                required
+              />
+              <input
+                type="text"
+                placeholder="分类"
+                value={formData.category}
+                onChange={(e) => setFormData({...formData, category: e.target.value})}
+              />
+              <input
+                type="text"
+                placeholder="出版社"
+                value={formData.publisher}
+                onChange={(e) => setFormData({...formData, publisher: e.target.value})}
+              />
+              <input
+                type="number"
+                placeholder="出版年份"
+                value={formData.publicationYear}
+                onChange={(e) => setFormData({...formData, publicationYear: parseInt(e.target.value)})}
+              />
+              <input
+                type="number"
+                placeholder="总数量"
+                value={formData.totalCopies}
+                onChange={(e) => setFormData({...formData, totalCopies: parseInt(e.target.value)})}
+                min="1"
+              />
+              <input
+                type="number"
+                placeholder="可借数量"
+                value={formData.availableCopies}
+                onChange={(e) => setFormData({...formData, availableCopies: parseInt(e.target.value)})}
+                min="0"
+              />
+            </div>
+            <textarea
+              placeholder="图书描述"
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              style={{ width: '100%', marginTop: '10px', padding: '8px' }}
+              rows="3"
+            />
+            <div style={{ marginTop: '10px' }}>
+              <button type="submit" disabled={loading}>
+                {loading ? '提交中...' : (editingBook ? '更新' : '创建')}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => { setShowForm(false); setEditingBook(null); }}
+                style={{ marginLeft: '10px' }}
+              >
+                取消
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* 图书列表 */}
+      {loading ? (
+        <div>加载中...</div>
+      ) : (
+        <div style={{ display: 'grid', gap: '15px' }}>
+          {books.map(book => (
+            <div key={book.id} style={{
+              border: '1px solid #ddd',
+              padding: '15px',
+              borderRadius: '8px',
+              backgroundColor: 'white'
+            }}>
+              <h3>{book.title}</h3>
+              <p><strong>作者:</strong> {book.author}</p>
+              <p><strong>ISBN:</strong> {book.isbn}</p>
+              <p><strong>分类:</strong> {book.category}</p>
+              <p><strong>出版社:</strong> {book.publisher}</p>
+              <p><strong>出版年份:</strong> {book.publicationYear}</p>
+              <p><strong>库存:</strong> {book.totalCopies} | <strong>可借:</strong> {book.availableCopies}</p>
+              {book.description && <p><strong>描述:</strong> {book.description}</p>}
+              
+              <div style={{ marginTop: '10px' }}>
+                <button 
+                  onClick={() => handleEdit(book)}
+                  style={{ marginRight: '10px', backgroundColor: '#28a745', color: 'white' }}
+                >
+                  编辑
+                </button>
+                <button 
+                  onClick={() => handleDelete(book.id)}
+                  style={{ backgroundColor: '#dc3545', color: 'white' }}
+                >
+                  删除
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default BookManager;
+
+
+
+安装依赖：
+npm install axios
+
+启动应用
+npm start
