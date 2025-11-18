@@ -1,0 +1,121 @@
+<!-- 主仪表板页面 -->
+<div class="dashboard-container">
+    <!-- 侧边栏导航 -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h3><i class="fa fa-book"></i> 图书管理系统</h3>
+        </div>
+        
+        <ul class="sidebar-menu">
+            <li class="nav-item active">
+                <a href="#" class="nav-link" data-page="dashboard">
+                    <i class="fa fa-dashboard"></i> 仪表板
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-page="books">
+                    <i class="fa fa-book"></i> 图书管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-page="readers">
+                    <i class="fa fa-users"></i> 读者管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-page="borrows">
+                    <i class="fa fa-exchange"></i> 借阅管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-page="categories">
+                    <i class="fa fa-list"></i> 分类管理
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-page="publishers">
+                    <i class="fa fa-building"></i> 出版商管理
+                </a>
+            </li>
+        </ul>
+        
+        <div class="sidebar-footer">
+            <button id="logoutBtn" class="btn btn-danger btn-block">
+                <i class="fa fa-sign-out"></i> 退出登录
+            </button>
+        </div>
+    </nav>
+    
+    <!-- 主内容区域 -->
+    <main class="main-content">
+        <!-- 顶部导航栏 -->
+        <header class="top-header">
+            <div class="header-left">
+                <button class="menu-toggle btn btn-light">
+                    <i class="fa fa-bars"></i>
+                </button>
+            </div>
+            <div class="header-right">
+                <span class="username">管理员</span>
+                <img src="assets/user-avatar.png" alt="用户头像" class="user-avatar">
+            </div>
+        </header>
+        
+        <!-- 页面内容 -->
+        <div class="page-content" id="pageContent">
+            <!-- 仪表板内容 -->
+            <div class="dashboard-content">
+                <h2 class="page-title">欢迎使用图书管理系统</h2>
+                <p class="page-subtitle">这是系统的仪表板，显示关键统计信息</p>
+                
+                <!-- 统计卡片 -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-primary">
+                            <i class="fa fa-book"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalBooks">0</h3>
+                            <p>图书总数</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-success">
+                            <i class="fa fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalReaders">0</h3>
+                            <p>读者总数</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-warning">
+                            <i class="fa fa-exchange"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="totalBorrows">0</h3>
+                            <p>借阅总数</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon bg-danger">
+                            <i class="fa fa-clock-o"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="overdueBooks">0</h3>
+                            <p>逾期图书</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 最新动态 -->
+                <div class="recent-activities">
+                    <h3>最新动态</h3>
+                    <ul class="activity-list" id="activityList">
+                        <!-- 动态内容将通过JavaScript加载 -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
