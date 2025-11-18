@@ -1,0 +1,174 @@
+在前端项目中创建API配置文件（Java）
+
+// src/config/api.js
+const API_CONFIG = {
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:5001/api',
+  TIMEOUT: 10000,
+  HEADERS: {
+    'Content-Type': 'application/json',
+  }
+};
+
+export default API_CONFIG;
+
+
+创建统一的API服务
+
+// src/services/apiService.js
+import axios from 'axios';
+import API_CONFIG from '../config/api';
+
+class ApiService {
+  constructor() {
+    this.client = axios.create({
+      baseURL: API_CONFIG.BASE_URL,
+      timeout: API_CONFIG.TIMEOUT,
+      headers: API_CONFIG.HEADERS
+    });
+    
+    // 请求拦截器 - 添加token
+    this.client.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem('admin_token') || localStorage.getItem('reader_token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+    
+    // 响应拦截器 - 统一错误处理
+    this.client.interceptors.response.use(
+      (response) => response.data,
+      (error) => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem('admin_token');
+          localStorage.removeItem('reader_token');
+          window.location.href = '/login';
+        }
+        return Promise.reject(error.response?.data || error);
+      }
+    );
+  }
+
+  // 通用请求方法
+  async request(config) {
+    return this.client.request(config);
+  }
+
+  get(url, params = {}) {
+    return this.request({ method: 'GET', url, params });
+  }
+
+  post(url, data = {}) {
+    return this.request({ method: 'POST', url, data });
+  }
+
+  put(url, data = {}) {
+    return this.request({ method: 'PUT', url, data });
+  }
+
+  delete(url) {
+    return this.request({ method: 'DELETE', url });
+  }
+}
+
+export default new ApiService();
+
+业务服务模块
+1
+// src/services/adminService.js
+import apiService from './apiService';
+
+export const adminService = {
+  // 管理员登录
+  login: (username, password) => {
+    return apiService.post('/admins/login', { username, password });
+  },
+
+  // 获取管理员信息
+  getProfile: () => {
+    return apiService.get('/admins/me');
+  },
+
+  // 更新管理员信息
+  updateProfile: (profileData) => {
+    return apiService.put('/admins/me', profileData);
+  },
+
+  // 注销
+  logout: () => {
+    return apiService.post('/admins/logout');
+  }
+};
+
+2
+// src/services/bookService.js
+import apiService from './apiService';
+
+export const bookService = {
+  // 获取图书列表
+  getBooks: (page = 1, limit = 10, search = '') => {
+    return apiService.get('/books', { page, limit, search });
+  },
+
+  // 获取图书详情
+  getBookById: (id) => {
+    return apiService.get(`/books/${id}`);
+  },
+
+  // 创建图书
+  createBook: (bookData) => {
+    return apiService.post('/books', bookData);
+  },
+
+  // 更新图书
+  updateBook: (id, bookData) => {
+    return apiService.put(`/books/${id}`, bookData);
+  },
+
+  // 删除图书
+  deleteBook: (id) => {
+    return apiService.delete(`/books/${id}`);
+  },
+
+  // 获取图书统计
+  getStats: () => {
+    return apiService.get('/books/stats/summary');
+  }
+};
+
+3
+// src/services/borrowService.js
+import apiService from './apiService';
+
+export const borrowService = {
+  // 获取借阅记录
+  getBorrows: (page = 1, limit = 10, search = '', status = '') => {
+    return apiService.get('/borrows', { page, limit, search, status });
+  },
+
+  // 借书
+  borrowBook: (readerId, bookId) => {
+    return apiService.post('/borrows', {
+      reader_id: readerId,
+      book_id: bookId
+    });
+  },
+
+  // 还书
+  returnBook: (borrowId) => {
+    return apiService.put(`/borrows/${borrowId}/return`);
+  },
+
+  // 续借
+  renewBook: (borrowId, days = 15) => {
+    return apiService.put(`/borrows/${borrowId}/renew`, { days });
+  },
+
+  // 获取读者借阅记录
+  getReaderBorrows: (readerId) => {
+    return apiService.get(`/borrows/reader/${readerId}`);
+  }
+};
